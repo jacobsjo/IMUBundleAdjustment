@@ -1,25 +1,20 @@
 #include "IMUIntegration.h"
 
-IMUIntegration::IMUIntegration() {
+
+IMUIntegration::IMUIntegration() : IMUIntegration(PathState(Eigen::Vector3d(0,0,0),Eigen::Vector3d(0,0,0))) {}
+IMUIntegration::IMUIntegration(PathState initalPathState) : path {initalPathState} {}
+
+void IMUIntegration::addImuStep(Eigen::Vector3d deltaPosition, Eigen::Vector3d deltaOrientation) {
 
 }
 
-void IMUIntegration::addImuStep(Vector3 deltaPosition, Vector3 deltaOrientation) {
+PathState IMUIntegration::getPathState(float time) {
+    return PathState(Eigen::Vector3d(0,0,0),Eigen::Vector3d(0,0,0));
+}
+
+void IMUIntegration::setPathState(float time, PathState pathState) {
 
 }
 
-Vector3 IMUIntegration::getPosition(float time) {
-    return nullptr;
-}
 
-void IMUIntegration::setPosition(float time, Vector3 position) {
 
-}
-
-Vector3 IMUIntegration::getOrientation(float time) {
-    return nullptr;
-}
-
-void IMUIntegration::setOrientation(float time, Vector3 orientation) {
-
-}

@@ -1,18 +1,25 @@
-#ifndef IMUBUNDLEADJUSTMENT_IMUINTEGRATION_H
-#define IMUBUNDLEADJUSTMENT_IMUINTEGRATION_H
+#pragma once
+
+#include <Eigen/Dense>
+#include <list>
+
+struct PathState{
+    PathState(Eigen::Vector3d _position, Eigen::Vector3d _orientation):
+        position(_position), orientation(_orientation) {};
+    Eigen::Vector3d position;
+    Eigen::Vector3d orientation;
+};
 
 
 class IMUIntegration {
 public:
     IMUIntegration();
-    void addImuStep(Vector3 deltaPosition, Vector3 deltaOrientation);
+    IMUIntegration(PathState initalPathState);
+    void addImuStep(Eigen::Vector3d deltaPosition, Eigen::Vector3d deltaOrientation);
 
-    Vector3 getPosition(float time);
-    void setPosition(float time, Vector3 position);
+    PathState getPathState(float time);
+    void setPathState(float time, PathState pathState);
 
-    Vector3 getOrientation(float time);
-    void setOrientation(float time, Vector3 orientation);
+private:
+    std::list<PathState> path;
 };
-
-
-#endif //IMUBUNDLEADJUSTMENT_IMUINTEGRATION_H
