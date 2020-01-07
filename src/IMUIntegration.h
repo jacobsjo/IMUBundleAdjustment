@@ -3,6 +3,11 @@
 #include <list>
 #include <stdexcept>
 
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <fstream>
+
 #include "CameraState.h"
 
 class IMUIntegration {
@@ -17,6 +22,20 @@ public:
      * @param initalCameraState initial cmaeraState
      */
     IMUIntegration(CameraState initalCameraState);
+
+
+    /**
+     * Initializes the IMUIntegration with imu data from csv file given and default initial cameraState (position 0,0,0; oritentation 0;0;0)
+     * @param filename cvs file to read imu data from
+     */
+    IMUIntegration(std::string filename);
+
+    /**
+     * Initializes the IMUIntegration with imu data from csv file given and initial cameraState
+     * @param initalCameraState  initial cmaeraState
+     * @param filename cvs file to read imu data from
+     */
+    IMUIntegration(CameraState initalCameraState, std::string filename);
 
     /**
      * Adds a new IMU meassurement. The meassurements have to be added in order

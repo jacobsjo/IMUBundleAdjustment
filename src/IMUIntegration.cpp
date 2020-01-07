@@ -6,6 +6,32 @@ IMUIntegration::IMUIntegration(CameraState initalPathState) : path {initalPathSt
     lastCorrectedFrame = initalPathState.frame;
 }
 
+IMUIntegration::IMUIntegration(std::string filename) : IMUIntegration(CameraState(0, Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond()), filename) {}
+IMUIntegration::IMUIntegration(CameraState initalCameraState, std::string filename) : IMUIntegration(initalCameraState){
+    std::ifstream infile(filename);
+    std::string line = "";
+
+    std::string row[12];
+
+    int i = initalCameraState.frame;
+
+    while (getline(infile, line)){
+
+        std::stringstream strstr(line);
+        std::string word = "";
+        int j = 0;
+        while (getline(strstr,word, ';')){
+            row[j++] = word;
+        }
+
+        Eigen::Vector3d deltaPosition(stod(row[5]),stod(row[6]),stod(row[7]));
+        Eigen::Vector3d deltaOrientation(stod(row[9]),stod(row[10]),stod(row[11]));
+
+        addImuStep(ImuStep(++i,deltaPosition,deltaOrientation));
+
+    }
+}
+
 
 
 void IMUIntegration::addImuStep(ImuStep imuStep) {
