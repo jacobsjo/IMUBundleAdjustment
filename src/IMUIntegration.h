@@ -57,11 +57,18 @@ public:
      */
     void setCameraState(CameraState cameraState);
 
+    /**
+     * Saves the path as a 3d mesh
+     * @param file to save the mesh to
+     */
+    void saveModel(std::string filename);
+
 private:
 
 
 
     std::list<CameraState> path; //ordered list of camera states
     int lastCorrectedFrame; //time of last corrected cameraState
+    Eigen::Vector3d lastVelocity;
     //std::list<ImuStep> uncorrectedImuSteps; //ordered list of uncorrected IMU steps, corresponding to uncorrectedPath //TOOD: is this neeeded?
 };

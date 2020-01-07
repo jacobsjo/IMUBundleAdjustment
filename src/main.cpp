@@ -1,4 +1,7 @@
+#include "IMUIntegration.h"
+
 int main()
 {
-    return 0;
+    IMUIntegration imuIntegration("../data/20191218_100925.csv");
+    imuIntegration.saveModel("../out/20191218_100925.off");
 }

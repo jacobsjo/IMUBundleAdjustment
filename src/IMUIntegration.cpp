@@ -15,15 +15,18 @@ IMUIntegration::IMUIntegration(CameraState initalCameraState, std::string filena
 
     int i = initalCameraState.frame;
 
+    getline(infile,line); // discard first line
+
     while (getline(infile, line)){
 
         std::stringstream strstr(line);
         std::string word = "";
         int j = 0;
-        while (getline(strstr,word, ';')){
+        while (getline(strstr,word, ',')){
             row[j++] = word;
         }
 
+        std::cout<<row[5]<<","<<row[6]<<","<<row[7]<<","<<std::endl;
         Eigen::Vector3d deltaPosition(stod(row[5]),stod(row[6]),stod(row[7]));
         Eigen::Vector3d deltaOrientation(stod(row[9]),stod(row[10]),stod(row[11]));
 
@@ -40,7 +43,8 @@ void IMUIntegration::addImuStep(ImuStep imuStep) {
         return;
     }
 
-    Eigen::Vector3d newPosition = path.back().position + (path.back().orientation * imuStep.deltaPosition);
+    lastVelocity += (path.back().orientation * imuStep.deltaPosition);
+    Eigen::Vector3d newPosition = path.back().position + lastVelocity;
 
     Eigen::AngleAxisd rollAngle(imuStep.deltaOrientation[0],Eigen::Vector3d::UnitX());
     Eigen::AngleAxisd pitchAngle(imuStep.deltaOrientation[1],Eigen::Vector3d::UnitY());
@@ -93,5 +97,23 @@ void IMUIntegration::setCameraState(CameraState pathState) {
     lastCorrectedFrame = pathState.frame;
 }
 
+void IMUIntegration::saveModel(std::string filename){
+    // Write off file.
+    std::ofstream outFile(filename);
+    if (!outFile.is_open()) return;
 
+    // Write header.
+    outFile << "COFF" << std::endl;
+    outFile << path.size() << " 0 0" << std::endl;
+
+    // Save vertices.
+    for (auto &state : path) {
+        outFile << state.position.x() << " " << state.position.y() << " " << state.position.z() << " 255 255 0 255" << std::endl;
+    }
+
+    // Close file.
+    outFile.close();
+
+    return;
+}
 
