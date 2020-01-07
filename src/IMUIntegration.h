@@ -1,25 +1,48 @@
 #pragma once
-
 #include <Eigen/Dense>
 #include <list>
+#include <stdexcept>
 
-struct PathState{
-    PathState(Eigen::Vector3d _position, Eigen::Vector3d _orientation):
-        position(_position), orientation(_orientation) {};
-    Eigen::Vector3d position;
-    Eigen::Vector3d orientation;
-};
-
+#include "CameraState.h"
 
 class IMUIntegration {
 public:
+    /**
+     * Initializes the IMUINtegration with default initial cameraState (position 0,0,0; oritentation 0;0;0)
+     */
     IMUIntegration();
-    IMUIntegration(PathState initalPathState);
-    void addImuStep(Eigen::Vector3d deltaPosition, Eigen::Vector3d deltaOrientation);
 
-    PathState getPathState(float time);
-    void setPathState(float time, PathState pathState);
+    /**
+     * Initializes the IMUIntegration with a given initial cameraState
+     * @param initalCameraState initial cmaeraState
+     */
+    IMUIntegration(CameraState initalCameraState);
+
+    /**
+     * Adds a new IMU meassurement. The meassurements have to be added in order
+     * @param imuStep step to be added
+     */
+    void addImuStep(ImuStep imuStep);
+
+    /**
+     * gets the camera state for a given time
+     * @param time the frame for witch the camera state is to be calculated
+     * @return the camera state at the given time
+     */
+    CameraState getCameraState(int frame);
+
+
+    /**
+     * Sets a cameraState. The cameraStates have to be set in order and imustep for the time of the cameraState has to exist
+     * @param cameraState the cameraState to be added.
+     */
+    void setCameraState(CameraState cameraState);
 
 private:
-    std::list<PathState> path;
+
+
+
+    std::list<CameraState> path; //ordered list of camera states
+    int lastCorrectedFrame; //time of last corrected cameraState
+    //std::list<ImuStep> uncorrectedImuSteps; //ordered list of uncorrected IMU steps, corresponding to uncorrectedPath //TOOD: is this neeeded?
 };

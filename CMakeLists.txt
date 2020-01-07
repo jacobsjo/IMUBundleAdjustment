@@ -17,6 +17,6 @@ add_executable(IMUBundleAdjustment
         src/IMUIntegration.h
         src/KeypointDetection.cpp
         src/KeypointDetection.h
-        src/main.cpp)
+        src/main.cpp src/CameraState.h)
 
 target_link_libraries(IMUBundleAdjustment Eigen3::Eigen)
