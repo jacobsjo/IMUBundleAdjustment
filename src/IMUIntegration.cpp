@@ -1,19 +1,20 @@
 #include "IMUIntegration.h"
 
 
-IMUIntegration::IMUIntegration() : IMUIntegration(CameraState(0, Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond())) {}
-IMUIntegration::IMUIntegration(CameraState initalPathState) : path {initalPathState} {
-    lastCorrectedFrame = initalPathState.frame;
+IMUIntegration::IMUIntegration(float framerate) : IMUIntegration(framerate, CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond())) {}
+IMUIntegration::IMUIntegration(float framerate, CameraState initalPathState) : path {} {
+    path.push_back(PathState(0, initalPathState, Eigen::Vector3d(0,0,0)));
+    deltaTime = 1/framerate;
 }
 
-IMUIntegration::IMUIntegration(std::string filename) : IMUIntegration(CameraState(0, Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond()), filename) {}
-IMUIntegration::IMUIntegration(CameraState initalCameraState, std::string filename) : IMUIntegration(initalCameraState){
+IMUIntegration::IMUIntegration(float framerate, std::string filename) : IMUIntegration(framerate, CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond()), filename) {}
+IMUIntegration::IMUIntegration(float framerate, CameraState initalCameraState, std::string filename) : IMUIntegration(framerate, initalCameraState){
     std::ifstream infile(filename);
     std::string line = "";
 
     std::string row[12];
 
-    int i = initalCameraState.frame;
+    int i = 0;
 
     getline(infile,line); // discard first line
 
@@ -26,7 +27,7 @@ IMUIntegration::IMUIntegration(CameraState initalCameraState, std::string filena
             row[j++] = word;
         }
 
-        std::cout<<row[5]<<","<<row[6]<<","<<row[7]<<","<<std::endl;
+        //std::cout<<row[5]<<","<<row[6]<<","<<row[7]<<","<<std::endl;
         Eigen::Vector3d deltaPosition(stod(row[5]),stod(row[6]),stod(row[7]));
         Eigen::Vector3d deltaOrientation(stod(row[9]),stod(row[10]),stod(row[11]));
 
@@ -43,58 +44,46 @@ void IMUIntegration::addImuStep(ImuStep imuStep) {
         return;
     }
 
-    lastVelocity += (path.back().orientation * imuStep.deltaPosition);
-    Eigen::Vector3d newPosition = path.back().position + lastVelocity;
-
-    Eigen::AngleAxisd rollAngle(imuStep.deltaOrientation[0],Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(imuStep.deltaOrientation[1],Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(imuStep.deltaOrientation[2],Eigen::Vector3d::UnitZ());
-
-    Eigen::Quaterniond newOrientation = rollAngle * pitchAngle * yawAngle * path.back().orientation;
-
-    path.push_back(CameraState(imuStep.frame, newPosition, newOrientation) );
+    uncorrectedImuSteps.push_back(imuStep);
 }
 
 CameraState IMUIntegration::getCameraState(int frame) {
     for (auto &state : path){
         if (state.frame == frame){
-            return state;
+            return state.cameraState;
         }
     }
 
-    return CameraState(frame, Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond());
+    return CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond());
 }
 
-void IMUIntegration::setCameraState(CameraState pathState) {
-    if (lastCorrectedFrame > pathState.frame){
-        throw std::invalid_argument( "new pathState is older than pathState alreaddy set" );
-        return;
-    }
 
-    CameraState *uncorrectedPathState;
+bool IMUIntegration::hasNextCameraState(){
+    return !uncorrectedImuSteps.empty();
+}
 
-    for (auto &state : path){
-        if (state.frame == pathState.frame){
-            uncorrectedPathState = &state;
-            break;
-        }
-    }
+CameraState IMUIntegration::getNextCameraState(){
+    PathState& lastPathStep = path.back();
+    ImuStep& imuStep = uncorrectedImuSteps.front();
 
-    Eigen::Vector3d positionError = uncorrectedPathState->position - pathState.position;
-    Eigen::Quaterniond orientationError = uncorrectedPathState->orientation * pathState.orientation.conjugate();
-    int framesToCorrect = pathState.frame - lastCorrectedFrame;
+    Eigen::Vector3d newPosition = lastPathStep.cameraState.position + lastPathStep.velocity + imuStep.acceleration / 2.0;
 
-    for (auto &state : path){
-        if (state.frame > lastCorrectedFrame && state.frame <= pathState.frame) {
-            state.position += positionError * (state.frame - lastCorrectedFrame) / (pathState.frame - lastCorrectedFrame);
-            state.orientation = state.orientation.slerp((state.frame - lastCorrectedFrame) / (pathState.frame - lastCorrectedFrame), orientationError * state.orientation);
-        } else if (state.frame > pathState.frame) {
-            state.orientation = orientationError * state.orientation;
-            state.position = orientationError * (state.position - uncorrectedPathState->position) + pathState.position;
-        }
-    }
+    Eigen::AngleAxisd rollAngle(imuStep.deltaOrientation[0],Eigen::Vector3d::UnitX());
+    Eigen::AngleAxisd pitchAngle(imuStep.deltaOrientation[1],Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd yawAngle(imuStep.deltaOrientation[2],Eigen::Vector3d::UnitZ());
 
-    lastCorrectedFrame = pathState.frame;
+    Eigen::Quaterniond newOrientation = rollAngle * pitchAngle * yawAngle * path.back().cameraState.orientation;
+
+    return CameraState(newPosition, newOrientation);
+}
+
+void IMUIntegration::correctCameraState(CameraState cameraState) {
+    PathState& lastPathStep = path.back();
+
+    Eigen::Vector3d correctedVelocity = 2 * cameraState.position - 2 * lastPathStep.cameraState.position - lastPathStep.velocity;
+
+    path.push_back(PathState(lastPathStep.frame + 1, cameraState, correctedVelocity));
+    uncorrectedImuSteps.pop_front();
 }
 
 void IMUIntegration::saveModel(std::string filename){
@@ -108,7 +97,7 @@ void IMUIntegration::saveModel(std::string filename){
 
     // Save vertices.
     for (auto &state : path) {
-        outFile << state.position.x() << " " << state.position.y() << " " << state.position.z() << " 255 255 0 255" << std::endl;
+        outFile << state.cameraState.position.x() << " " << state.cameraState.position.y() << " " << state.cameraState.position.z() << " 255 255 0 255" << std::endl;
     }
 
     // Close file.

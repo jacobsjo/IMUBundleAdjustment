@@ -15,27 +15,27 @@ public:
     /**
      * Initializes the IMUINtegration with default initial cameraState (position 0,0,0; oritentation 0;0;0)
      */
-    IMUIntegration();
+    IMUIntegration(float framerate);
 
     /**
      * Initializes the IMUIntegration with a given initial cameraState
      * @param initalCameraState initial cmaeraState
      */
-    IMUIntegration(CameraState initalCameraState);
+    IMUIntegration(float framerate, CameraState initalCameraState);
 
 
     /**
      * Initializes the IMUIntegration with imu data from csv file given and default initial cameraState (position 0,0,0; oritentation 0;0;0)
      * @param filename cvs file to read imu data from
      */
-    IMUIntegration(std::string filename);
+    IMUIntegration(float framerate, std::string filename);
 
     /**
      * Initializes the IMUIntegration with imu data from csv file given and initial cameraState
      * @param initalCameraState  initial cmaeraState
      * @param filename cvs file to read imu data from
      */
-    IMUIntegration(CameraState initalCameraState, std::string filename);
+    IMUIntegration(float framerate, CameraState initalCameraState, std::string filename);
 
     /**
      * Adds a new IMU meassurement. The meassurements have to be added in order
@@ -44,18 +44,27 @@ public:
     void addImuStep(ImuStep imuStep);
 
     /**
-     * gets the camera state for a given time
+     * gets the corrected camera state for a given time
      * @param time the frame for witch the camera state is to be calculated
-     * @return the camera state at the given time
+     * @return the corrected camera state at the given time
      */
     CameraState getCameraState(int frame);
 
+    /**
+     * @return the next camera state to be corrected
+     */
+    CameraState getNextCameraState();
 
     /**
-     * Sets a cameraState. The cameraStates have to be set in order and imustep for the time of the cameraState has to exist
-     * @param cameraState the cameraState to be added.
+     * @return weather there is a uncorrected CameraState left
      */
-    void setCameraState(CameraState cameraState);
+    bool hasNextCameraState();
+
+    /**
+     * Corrects the next camera state with new camera state
+     * @param the corrected cameraState
+     */
+    void correctCameraState(CameraState cameraState);
 
     /**
      * Saves the path as a 3d mesh
@@ -65,10 +74,17 @@ public:
 
 private:
 
+    struct PathState{
+        PathState(int _frame, CameraState _cameraState, Eigen::Vector3d _velocity):
+                frame(_frame), cameraState(_cameraState), velocity(_velocity) {};
 
+        CameraState cameraState;
+        Eigen::Vector3d velocity;
+        int frame;
+    };
 
-    std::list<CameraState> path; //ordered list of camera states
-    int lastCorrectedFrame; //time of last corrected cameraState
-    Eigen::Vector3d lastVelocity;
-    //std::list<ImuStep> uncorrectedImuSteps; //ordered list of uncorrected IMU steps, corresponding to uncorrectedPath //TOOD: is this neeeded?
+    float deltaTime;
+
+    std::list<ImuStep> uncorrectedImuSteps; //orderd list of ImuSteps after the last path position
+    std::list<PathState> path; //ordered list of corrected camera states
 };
