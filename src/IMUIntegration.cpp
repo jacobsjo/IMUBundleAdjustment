@@ -1,13 +1,13 @@
 #include "IMUIntegration.h"
 
 
-IMUIntegration::IMUIntegration(float framerate) : IMUIntegration(framerate, CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond())) {}
+IMUIntegration::IMUIntegration(float framerate) : IMUIntegration(framerate, CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond::Identity())) {}
 IMUIntegration::IMUIntegration(float framerate, CameraState initalPathState) : path {} {
     path.push_back(PathState(0, initalPathState, Eigen::Vector3d(0,0,0)));
     deltaTime = 1/framerate;
 }
 
-IMUIntegration::IMUIntegration(float framerate, std::string filename) : IMUIntegration(framerate, CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond()), filename) {}
+IMUIntegration::IMUIntegration(float framerate, std::string filename) : IMUIntegration(framerate, CameraState(Eigen::Vector3d(0, 0, 0), Eigen::Quaterniond::Identity()), filename) {}
 IMUIntegration::IMUIntegration(float framerate, CameraState initalCameraState, std::string filename) : IMUIntegration(framerate, initalCameraState){
     std::ifstream infile(filename);
     std::string line = "";
@@ -66,13 +66,18 @@ CameraState IMUIntegration::getNextCameraState(){
     PathState& lastPathStep = path.back();
     ImuStep& imuStep = uncorrectedImuSteps.front();
 
-    Eigen::Vector3d newPosition = lastPathStep.cameraState.position + lastPathStep.velocity + imuStep.acceleration / 2.0;
 
     Eigen::AngleAxisd rollAngle(imuStep.deltaOrientation[0],Eigen::Vector3d::UnitX());
     Eigen::AngleAxisd pitchAngle(imuStep.deltaOrientation[1],Eigen::Vector3d::UnitY());
     Eigen::AngleAxisd yawAngle(imuStep.deltaOrientation[2],Eigen::Vector3d::UnitZ());
 
-    Eigen::Quaterniond newOrientation = rollAngle * pitchAngle * yawAngle * path.back().cameraState.orientation;
+    Eigen::Quaterniond newOrientation = rollAngle * pitchAngle * yawAngle * lastPathStep.cameraState.orientation;
+
+    auto euler = newOrientation.toRotationMatrix().eulerAngles(0, 1, 2);
+    std::cout << euler << std::endl << std::endl;
+
+    Eigen::Vector3d newPosition = lastPathStep.cameraState.position + lastPathStep.velocity + newOrientation * imuStep.acceleration / 2.0;
+
 
     return CameraState(newPosition, newOrientation);
 }
