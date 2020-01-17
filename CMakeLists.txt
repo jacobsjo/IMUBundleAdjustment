@@ -8,8 +8,10 @@ set(Eigen3_INCLUDE_DIR ${LIBRARY_DIR}/Eigen/ CACHE PATH "Path to Eigen source fo
 set(CMAKE_CXX_STANDARD 14)
 
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package (glog REQUIRED)
+find_package (Ceres REQUIRED)
 
-include_directories(src)
+include_directories(src ${CERES_INCLUDE_DIRS})
 add_executable(IMUBundleAdjustment
         src/BundleAdjustment.cpp
         src/BundleAdjustment.h
@@ -17,6 +19,7 @@ add_executable(IMUBundleAdjustment
         src/IMUIntegration.h
         src/KeypointDetection.cpp
         src/KeypointDetection.h
-        src/main.cpp src/CameraState.h)
+        src/BundleAdjuster.cpp
+        src/main.cpp src/CameraState.h src/BundleAdjuster.h)
 
-target_link_libraries(IMUBundleAdjustment Eigen3::Eigen)
+target_link_libraries(IMUBundleAdjustment Eigen3::Eigen glog::glog ${CERES_LIBRARIES})

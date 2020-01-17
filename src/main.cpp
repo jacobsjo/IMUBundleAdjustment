@@ -1,4 +1,5 @@
 #include "IMUIntegration.h"
+#include "BundleAdjuster.h"
 
 int main()
 {
