@@ -70,9 +70,11 @@ public:
     }
 
     bool LoadFile(const char* filename);
-    void addFrame(int frame, Eigen::Vector3d camera_position, Eigen::Quaterniond camera_orientation);
-    void run();
+    void addFrame(int frame, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation);
+    void run(ceres::Solver::Summary* summary);
 
+    Eigen::Vector3d getPosition(int frame);
+    Eigen::AngleAxisd getOrientation(int frame);
 
 private:
     template<typename T>
@@ -87,6 +89,7 @@ private:
     int num_points_;
     int num_observations_;
     int num_parameters_;
+    int first_points_distance_;
 
     int* point_index_;
     int* camera_index_;
@@ -154,6 +157,31 @@ public:
         double observed_y;
     };
 
+    struct FirstPointDistanceError {
+        FirstPointDistanceError(double desired_distance)
+                : desired_distance(desired_distance) {}
+
+        template <typename T>
+        bool operator()(const T* const point1,
+                        const T* const point2,
+                        T* residuals) const {
+
+            residuals[0] = (point1[0] - point2[0]) * (point1[0] - point2[0])
+                         + (point1[1] - point2[1]) * (point1[1] - point2[1])
+                         + (point1[2] - point2[2]) * (point1[2] - point2[2]);
+
+            return true;
+        }
+
+        // Factory to hide the construction of the CostFunction object from
+        // the client code.
+        static ceres::CostFunction* Create(const double desired_distance) {
+            return (new ceres::AutoDiffCostFunction<FirstPointDistanceError, 1, 3, 3>(
+                    new FirstPointDistanceError(desired_distance)));
+        }
+
+        double desired_distance;
+    };
 
 };
 

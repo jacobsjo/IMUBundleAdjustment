@@ -1,25 +1,46 @@
 #include "IMUIntegration.h"
 #include "BundleAdjuster.h"
+#include "BundleAdjustmentIMU.h"
 
 int main()
 {
-    IMUIntegration imuIntegration(15.0, "../data/20191218_100925.csv");
+    BundleAdjustmentIMU baimu("../data/20191218_100925.csv", "../data/20191218_100925_keypoints.txt");
+
+    int i = 0;
+    ceres::Solver::Summary summary;
+    while (baimu.runStep(&summary)){
+        i++;
+        std::cout << "Step " << i << " completed" << std::endl;
+        std::cout << summary.BriefReport() << std::endl;
+        std::cout << "========================================" << std::endl;
+    }
+
+    baimu.saveModel("../out/20191218_100925.off");
+
+/*    IMUIntegration imuIntegration(15.0, "../data/20191218_100925.csv");
 
     int i = 0;
 
     while(imuIntegration.hasNextCameraState()){
         i++;
+        std::cout << "Step " << i << std::endl;
 
+        //get next camera state
         CameraState nextCameraState = imuIntegration.getNextCameraState();
 
-        //Test of correcting nextCameraState (note, position updates influences velocity; orientation update also updates orientation of accelerations).
-        if (i==100){
-            //nextCameraState.position += Eigen::Vector3d(20,0,0);
-            nextCameraState.orientation = Eigen::AngleAxisd(0.5*M_PI,Eigen::Vector3d::UnitY()) * nextCameraState.orientation;
-        }
+
+
+
+        //print report
+        //std::cout << summary.FullReport() << std::endl;
+
 
         imuIntegration.correctCameraState(nextCameraState);
+
+
+
+        std::cout << "=========================================" << std::endl;
     }
 
-    imuIntegration.saveModel("../out/20191218_100925.off");
+    imuIntegration.saveModel("../out/20191218_100925.off");*/
 }

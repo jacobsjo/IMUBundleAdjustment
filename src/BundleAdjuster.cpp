@@ -46,6 +46,7 @@ bool BundleAdjuster::LoadFile(const char* filename) {
     FscanfOrDie(fptr, "%d", &num_cameras_);
     FscanfOrDie(fptr, "%d", &num_points_);
     FscanfOrDie(fptr, "%d", &num_observations_);
+    FscanfOrDie(fptr, "%d", &first_points_distance_);
 
     point_index_ = new int[num_observations_];
     camera_index_ = new int[num_observations_];
@@ -62,22 +63,24 @@ bool BundleAdjuster::LoadFile(const char* filename) {
       }
     }
 
-//    for (int i = 0; i < num_parameters_; ++i) {
-//      FscanfOrDie(fptr, "%lf", parameters_ + i);
-//    }
+    // distance of first two points
+    ceres::CostFunction* cost_function =
+            FirstPointDistanceError::Create(first_points_distance_);
+
+    problem.AddResidualBlock(cost_function, NULL, mutable_points(), mutable_points() + 3);
+
     return true;
 }
 
-void BundleAdjuster::addFrame(int frame, Eigen::Vector3d camera_position, Eigen::Quaterniond camera_orientation){
-    double* camera = mutable_cameras() + frame * 6;
-    camera[0] = camera_position.x();
-    camera[1] = camera_position.y();
-    camera[2] = camera_position.z();
+void BundleAdjuster::addFrame(int frame, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation){
+    double *camera = mutable_cameras() + frame * 6;
+    camera[3] = camera_position.x();
+    camera[4] = camera_position.y();
+    camera[5] = camera_position.z();
 
-    Eigen::AngleAxisd axisAngle(camera_orientation);
-    camera[3] = axisAngle.angle() * axisAngle.axis()[0];
-    camera[4] = axisAngle.angle() * axisAngle.axis()[1];
-    camera[5] = axisAngle.angle() * axisAngle.axis()[2];
+    camera[0] = camera_orientation.angle() * camera_orientation.axis()[0];
+    camera[1] = camera_orientation.angle() * camera_orientation.axis()[1];
+    camera[2] = camera_orientation.angle() * camera_orientation.axis()[2];
 
     for (int i = 0; i < num_observations(); ++i) {
         if (camera_index_[i] != frame) continue;
@@ -97,8 +100,24 @@ void BundleAdjuster::addFrame(int frame, Eigen::Vector3d camera_position, Eigen:
     }
 }
 
+void BundleAdjuster::run(ceres::Solver::Summary* summary){
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.minimizer_progress_to_stdout = true;
 
+    ceres::Solve(options, &problem, summary);
+}
 
+Eigen::Vector3d BundleAdjuster::getPosition(int frame) {
+    double *camera = mutable_cameras() + frame * 6;
+    return Eigen::Vector3d(camera[3], camera[4], camera[5]);
+}
+
+Eigen::AngleAxisd BundleAdjuster::getOrientation(int frame) {
+    double *camera = mutable_cameras() + frame * 6;
+    Eigen::Vector3d raw_orientation(camera[0], camera[1], camera[2]);
+    return Eigen::AngleAxisd(raw_orientation.norm(), raw_orientation.normalized());
+}
 
 /*int main(int argc, char** argv) {
 

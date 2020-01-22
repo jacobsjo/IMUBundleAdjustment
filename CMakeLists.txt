@@ -20,6 +20,6 @@ add_executable(IMUBundleAdjustment
         src/KeypointDetection.cpp
         src/KeypointDetection.h
         src/BundleAdjuster.cpp
-        src/main.cpp src/CameraState.h src/BundleAdjuster.h)
+        src/main.cpp src/CameraState.h src/BundleAdjuster.h src/BundleAdjustmentIMU.cpp src/BundleAdjustmentIMU.h)
 
 target_link_libraries(IMUBundleAdjustment Eigen3::Eigen glog::glog ${CERES_LIBRARIES})
