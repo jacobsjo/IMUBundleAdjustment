@@ -1,8 +1,9 @@
+//How to build? g++ ORB.cpp -o ORB `pkg-config --cflags --libs opencv`
+//How to call the Function: ./ORB 1.png 2.png
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
 
 using namespace std;
 using namespace cv;
@@ -14,8 +15,8 @@ int main ( int argc, char** argv )
         cout<<"usage: feature_extraction img1 img2"<<endl;
         return 1;
     }
-    /*
-    Mat img_1 = cv::imread ( argv[1], CV_LOAD_IMAGE_COLOR );
+
+    Mat img_1 = imread ( argv[1], CV_LOAD_IMAGE_COLOR );
     Mat img_2 = imread ( argv[2], CV_LOAD_IMAGE_COLOR );
 
 
@@ -41,7 +42,7 @@ int main ( int argc, char** argv )
     imshow("original img",outimg1);
 
     vector<DMatch> matches; //stores the matches descriptors
-    matcher->match ( descriptors_1, descriptors_2, matches );
+    matcher->match (descriptors_1, descriptors_2, matches);
     double min_dist=10000, max_dist=0;
 
     for ( int i = 0; i < descriptors_1.rows; i++ )
@@ -52,9 +53,8 @@ int main ( int argc, char** argv )
     }
     cout << "-- Max dist : %f \n" << max_dist << endl;
     cout << "-- Min dist : %f \n"  << min_dist << endl;
-    //printf ( "-- Max dist : %f \n", max_dist );
-    //printf ( "-- Min dist : %f \n", min_dist );
-    std::vector< DMatch > good_matches;
+
+    vector< DMatch > good_matches;
     for ( int i = 0; i < descriptors_1.rows; i++ )
     {
         if ( matches[i].distance <= max ( 2*min_dist, 30.0 ) )
@@ -62,16 +62,27 @@ int main ( int argc, char** argv )
             good_matches.push_back (matches[i]);
         }
     }
+    //Get the index of the Keypoints
+    for (vector<DMatch>::size_type i=0;i<good_matches.size();i++)
+    {
+      cout << keypoints_1[good_matches[i].queryIdx].pt.x << "Query points_x" << "\t" << keypoints_1[good_matches[i].queryIdx].pt.y << "Query POints_Y" << endl;
+
+      cout << keypoints_2[good_matches[i].trainIdx].pt.x << "Train points_x" << "\t" << keypoints_2[good_matches[i].trainIdx].pt.y << "Train POints_Y" << endl;
+    }
+    //TODO: write the keypoints in the format <x>,<y>
+    //Datatype x and y as float
+    //TODO index of images
 
     Mat img_match;
     Mat img_goodmatch;
-    drawMatches ( img_1, keypoints_1, img_2, keypoints_2, matches, img_match );
-    drawMatches ( img_1, keypoints_1, img_2, keypoints_2, good_matches, img_goodmatch );
+    drawMatches (img_1, keypoints_1, img_2, keypoints_2, matches, img_match);
+    drawMatches (img_1, keypoints_1, img_2, keypoints_2, good_matches, img_goodmatch);
     //drawMatches
+
+    drawMatches (img_1, keypoints_1, img_2, keypoints_2, matches, img_match);
     imshow ( "result low", img_match );
     imshow ( "result high", img_goodmatch );
     waitKey(0);
-    */
 
     return 0;
 }
