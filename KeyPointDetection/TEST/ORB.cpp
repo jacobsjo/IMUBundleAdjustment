@@ -3,23 +3,24 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+
 using namespace std;
 using namespace cv;
-
 int main ( int argc, char** argv )
 {
+
     if ( argc != 3 )
     {
         cout<<"usage: feature_extraction img1 img2"<<endl;
         return 1;
     }
-
-    Mat img_1 = imread ( argv[1], CV_LOAD_IMAGE_COLOR );
+    /*
+    Mat img_1 = cv::imread ( argv[1], CV_LOAD_IMAGE_COLOR );
     Mat img_2 = imread ( argv[2], CV_LOAD_IMAGE_COLOR );
 
-    /*
-    Vector Keypoints, keypoints
-    */
+
+    //Vector Keypoints, keypoints
+
     std::vector<KeyPoint> keypoints_1, keypoints_2;
     Mat descriptors_1, descriptors_2;
     Ptr<FeatureDetector> detector = ORB::create();
@@ -61,7 +62,7 @@ int main ( int argc, char** argv )
             good_matches.push_back (matches[i]);
         }
     }
-    
+
     Mat img_match;
     Mat img_goodmatch;
     drawMatches ( img_1, keypoints_1, img_2, keypoints_2, matches, img_match );
@@ -70,5 +71,7 @@ int main ( int argc, char** argv )
     imshow ( "result low", img_match );
     imshow ( "result high", img_goodmatch );
     waitKey(0);
+    */
+
     return 0;
 }
