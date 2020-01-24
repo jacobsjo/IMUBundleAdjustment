@@ -4,9 +4,26 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace cv;
+
+//File Format we need to follow is:
+//
+void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,vector<KeyPoint>keypoints_2,vector<DMatch> good_matches)
+{
+  ofstream outfile(output);
+  outfile << "mytext here!" << endl;
+  //Get the index of the Keypoints
+  for (vector<DMatch>::size_type i=0;i<good_matches.size();i++)
+  {
+    outfile << "Frame\t" << Frames[0]<<"\t"<<"Query points_x"<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.x<<"\t"<<"Query points_y"<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.y<<endl;
+    outfile << "Frame\t" << Frames[1]<<"\t"<<"Train points_x"<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<"\t"<<"Train points_y"<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
+  }
+  outfile.close();
+}
 int main (int argc, char** argv)
 {
 
@@ -16,11 +33,12 @@ int main (int argc, char** argv)
         return 1;
     }
 
-
+    //TODO: One more for Loop to get pair wise images
+    //perform keypoint extraction and then bundle adjustment
     //Loop over the data folder build the image file inde
     //Build a keyFrame name. Each image is a KeyFrame Name
-    vector<cv::String> fn;
 
+    vector<cv::String> fn;
     glob("../../data/*.png", fn, false);
     vector<Mat> images;
     vector <int> Frames;
@@ -28,81 +46,66 @@ int main (int argc, char** argv)
     for (size_t i=0;i<count;i++)
     {
       Frames.push_back(i);
-
       cout << "image names:" << fn[i] << endl;
       cout << "Frame names:" << Frames[i] << endl;
     }
-
-    /*
-    for (size_t i=0; i<count; i++)
-      images.push_back(imread(fn[i]));
-      cout << "images" << images[i] << endl;
-    */
-    Mat img_1 = imread ( argv[1], CV_LOAD_IMAGE_COLOR );
-    Mat img_2 = imread ( argv[2], CV_LOAD_IMAGE_COLOR );
-
+    Mat img_1 = imread(argv[1],CV_LOAD_IMAGE_COLOR);
+    Mat img_2 = imread(argv[2],CV_LOAD_IMAGE_COLOR);
 
     //Vector Keypoints, keypoints
-    std::vector<KeyPoint> keypoints_1, keypoints_2;
+    vector<KeyPoint> keypoints_1, keypoints_2;
     Mat descriptors_1, descriptors_2;
     Ptr<FeatureDetector> detector = ORB::create();
     Ptr<DescriptorExtractor> descriptor = ORB::create();
+    Ptr<DescriptorMatcher> matcher  = DescriptorMatcher::create("BruteForce-Hamming");
 
-    Ptr<DescriptorMatcher> matcher  = DescriptorMatcher::create ( "BruteForce-Hamming" );
+    detector->detect(img_1,keypoints_1);
+    detector->detect(img_2,keypoints_2);
 
-
-    detector->detect ( img_1,keypoints_1 );
-    detector->detect ( img_2,keypoints_2 );
-
-
-    descriptor->compute ( img_1, keypoints_1, descriptors_1 );
-    descriptor->compute ( img_2, keypoints_2, descriptors_2 );
+    descriptor->compute(img_1,keypoints_1,descriptors_1);
+    descriptor->compute(img_2,keypoints_2,descriptors_2);
 
     Mat outimg1;
-    drawKeypoints( img_1, keypoints_1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
+    drawKeypoints(img_1,keypoints_1,outimg1,Scalar::all(-1),DrawMatchesFlags::DEFAULT);
     imshow("original img",outimg1);
 
     vector<DMatch> matches; //stores the matches descriptors
-    matcher->match (descriptors_1, descriptors_2, matches);
+    matcher->match(descriptors_1, descriptors_2, matches);
     double min_dist=10000, max_dist=0;
 
-    for ( int i = 0; i < descriptors_1.rows; i++ )
+    for (int i=0;i<descriptors_1.rows;i++)
     {
         double dist = matches[i].distance;
-        if ( dist < min_dist ) min_dist = dist;
-        if ( dist > max_dist ) max_dist = dist;
+        if (dist<min_dist) min_dist=dist;
+        if (dist>max_dist) max_dist=dist;
     }
     cout << "-- Max dist : %f \n" << max_dist << endl;
     cout << "-- Min dist : %f \n"  << min_dist << endl;
 
-    vector< DMatch > good_matches;
+    vector<DMatch> good_matches;
     for ( int i = 0; i < descriptors_1.rows; i++ )
     {
         if ( matches[i].distance <= max ( 2*min_dist, 30.0 ) )
         {
-            good_matches.push_back (matches[i]);
+            good_matches.push_back(matches[i]);
         }
     }
-    //Get the index of the Keypoints
-    for (vector<DMatch>::size_type i=0;i<good_matches.size();i++)
-    {
-      cout << keypoints_1[good_matches[i].queryIdx].pt.x << "Query points_x" << "\t" << keypoints_1[good_matches[i].queryIdx].pt.y << "Query POints_Y" << endl;
-      cout << keypoints_2[good_matches[i].trainIdx].pt.x << "Train points_x" << "\t" << keypoints_2[good_matches[i].trainIdx].pt.y << "Train POints_Y" << endl;
-    }
-    //TODO: write the keypoints in the format <x>,<y>
-    //Datatype x and y as float
-    //TODO index of images
+
+    //We read each pair of images from the data directory, perfom keypoint,
+    //detection, matching, and write it on the text file
+    string output = "../../output/bundle_data.txt";
+    write2File(output,Frames,keypoints_1,keypoints_2,good_matches);
 
     Mat img_match;
     Mat img_goodmatch;
-    drawMatches (img_1, keypoints_1, img_2, keypoints_2, matches, img_match);
-    drawMatches (img_1, keypoints_1, img_2, keypoints_2, good_matches, img_goodmatch);
+    drawMatches (img_1,keypoints_1,img_2,keypoints_2,matches,img_match);
+    drawMatches (img_1,keypoints_1,img_2,keypoints_2,good_matches,img_goodmatch);
     //drawMatches
 
-    drawMatches (img_1, keypoints_1, img_2, keypoints_2, matches, img_match);
+    drawMatches (img_1,keypoints_1,img_2,keypoints_2,matches,img_match);
 
-    imshow ( "result low", img_match );
-    imshow ( "result high", img_goodmatch );
+    imshow ("result low",img_match);
+    imshow ("result high",img_goodmatch);
     waitKey(0);
     return 0;
 }
