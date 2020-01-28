@@ -7,6 +7,9 @@
 #include <iostream>
 #include <fstream>
 
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
+
 using namespace std;
 using namespace cv;
 
@@ -23,6 +26,11 @@ void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,ve
     outfile << "Frame\t" << Frames[1]<<"\t"<<"Train points_x"<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<"\t"<<"Train points_y"<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
   }
   outfile.close();
+}
+
+void BundleAdjustment()
+{
+   ceres::Solver::Summary summary;
 }
 int main (int argc, char** argv)
 {
