@@ -7,30 +7,40 @@
 #include <iostream>
 #include <fstream>
 
-#include <ceres/ceres.h>
-#include <ceres/rotation.h>
+//#include <ceres/ceres.h>
+//#include <ceres/rotation.h>
 
 using namespace std;
 using namespace cv;
 
 //File Format we need to follow is:
-//
-void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,vector<KeyPoint>keypoints_2,vector<DMatch> good_matches)
+
+void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,vector<KeyPoint>keypoints_2,vector<DMatch> good_matches,int num_cameras)
 {
   ofstream outfile(output);
-  outfile << "mytext here!" << endl;
-  //Get the index of the Keypoints
+  //Add file headers
+  //<num_cameras> <num_keypoints> <num_total keypoints_index> <num_observations= num_frames*num_keypoints>
+
+  //outfile << "num_cameras\t" << "num_keypoints\t" << "num_observations" << endl;
+
+  //TODO: add the values of the header
+
+  outfile<<num_cameras<<" "<<keypoints_1.size()<<" "<< num_cameras*keypoints_1.size()<<" "<<endl;
+  //outfile <<"Frame Index\t" << "Keypoint Index\t" << "x-coordinate of Keypoint\t" << "y-coordinate of Keypoint\t" << endl;
+
   for (vector<DMatch>::size_type i=0;i<good_matches.size();i++)
   {
-    outfile << "Frame\t" << Frames[0]<<"\t"<<"Query points_x"<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.x<<"\t"<<"Query points_y"<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.y<<endl;
-    outfile << "Frame\t" << Frames[1]<<"\t"<<"Train points_x"<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<"\t"<<"Train points_y"<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
+    cout << good_matches[i].queryIdx << "QueryIndex" << endl;
+    cout << good_matches[i].trainIdx << "trainIndex" << endl;
+    outfile << Frames[0]<<" "<<good_matches[i].queryIdx<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.x<<" "<<keypoints_1[good_matches[i].queryIdx].pt.y<<endl;
+    outfile << Frames[1]<<" "<<good_matches[i].trainIdx<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<" "<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
   }
   outfile.close();
 }
 
 void BundleAdjustment()
 {
-   ceres::Solver::Summary summary;
+   //ceres::Solver::Summary summary;
 }
 int main (int argc, char** argv)
 {
@@ -45,13 +55,12 @@ int main (int argc, char** argv)
     //perform keypoint extraction and then bundle adjustment
     //Loop over the data folder build the image file inde
     //Build a keyFrame name. Each image is a KeyFrame Name
-
     vector<cv::String> fn;
     glob("../../data/*.png", fn, false);
     vector<Mat> images;
     vector <int> Frames;
-    size_t count = fn.size(); //number of png files in images folder
-    for (size_t i=0;i<count;i++)
+    size_t num_cameras = fn.size(); //number of png files in images folder
+    for (size_t i=0;i<num_cameras;i++)
     {
       Frames.push_back(i);
       cout << "image names:" << fn[i] << endl;
@@ -68,7 +77,9 @@ int main (int argc, char** argv)
     Ptr<DescriptorMatcher> matcher  = DescriptorMatcher::create("BruteForce-Hamming");
 
     detector->detect(img_1,keypoints_1);
+    cout << "Size of keypoints1:" << keypoints_1.size() << endl;
     detector->detect(img_2,keypoints_2);
+    cout << "Size of Keypoints2:" << keypoints_2.size() << endl;
 
     descriptor->compute(img_1,keypoints_1,descriptors_1);
     descriptor->compute(img_2,keypoints_2,descriptors_2);
@@ -91,9 +102,9 @@ int main (int argc, char** argv)
     cout << "-- Min dist : %f \n"  << min_dist << endl;
 
     vector<DMatch> good_matches;
-    for ( int i = 0; i < descriptors_1.rows; i++ )
+    for (int i=0;i<descriptors_1.rows;i++)
     {
-        if ( matches[i].distance <= max ( 2*min_dist, 30.0 ) )
+        if (matches[i].distance<=max(2*min_dist, 30.0))
         {
             good_matches.push_back(matches[i]);
         }
@@ -102,14 +113,13 @@ int main (int argc, char** argv)
     //We read each pair of images from the data directory, perfom keypoint,
     //detection, matching, and write it on the text file
     string output = "../../output/bundle_data.txt";
-    write2File(output,Frames,keypoints_1,keypoints_2,good_matches);
+    write2File(output,Frames,keypoints_1,keypoints_2,good_matches,num_cameras);
 
     Mat img_match;
     Mat img_goodmatch;
     drawMatches (img_1,keypoints_1,img_2,keypoints_2,matches,img_match);
     drawMatches (img_1,keypoints_1,img_2,keypoints_2,good_matches,img_goodmatch);
     //drawMatches
-
     drawMatches (img_1,keypoints_1,img_2,keypoints_2,matches,img_match);
 
     imshow ("result low",img_match);
