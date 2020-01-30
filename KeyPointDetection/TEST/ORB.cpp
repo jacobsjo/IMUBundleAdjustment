@@ -14,7 +14,6 @@ using namespace std;
 using namespace cv;
 
 //File Format we need to follow is:
-
 void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,vector<KeyPoint>keypoints_2,vector<DMatch> good_matches,int num_cameras)
 {
   ofstream outfile(output);
@@ -25,15 +24,20 @@ void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,ve
 
   //TODO: add the values of the header
 
-  outfile<<num_cameras<<" "<<keypoints_1.size()<<" "<< num_cameras*keypoints_1.size()<<" "<<endl;
+  outfile<<num_cameras<<" "<<keypoints_1.size()<<" "<< num_cameras*good_matches.size()<<" "<<endl;
   //outfile <<"Frame Index\t" << "Keypoint Index\t" << "x-coordinate of Keypoint\t" << "y-coordinate of Keypoint\t" << endl;
-
+  vector <Point2f> imgpts1, imgpts2;
   for (vector<DMatch>::size_type i=0;i<good_matches.size();i++)
   {
+    //queryIdx is the left image, Frame[0]
+    //trainIdx is the right image, Frame[1]
+    imgpts1.push_back(keypoints_1[good_matches[i].queryIdx].pt);
+    imgpts2.push_back(keypoints_2[good_matches[i].trainIdx].pt);
+    cout << "Good Indices:" << imgpts1[i] << i << imgpts2[i] << endl;
     cout << good_matches[i].queryIdx << "QueryIndex" << endl;
     cout << good_matches[i].trainIdx << "trainIndex" << endl;
-    outfile << Frames[0]<<" "<<good_matches[i].queryIdx<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.x<<" "<<keypoints_1[good_matches[i].queryIdx].pt.y<<endl;
-    outfile << Frames[1]<<" "<<good_matches[i].trainIdx<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<" "<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
+    outfile << Frames[0]<<" "<<i<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.x<<" "<<keypoints_1[good_matches[i].queryIdx].pt.y<<endl;
+    outfile << Frames[1]<<" "<<i<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<" "<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
   }
   outfile.close();
 }
