@@ -37,28 +37,27 @@
 
 #include "BundleAdjuster.h"
 
-bool BundleAdjuster::LoadFile(const char* filename) {
-    return LoadFile(filename, true);
-}
+BundleAdjuster::BundleAdjuster(Eigen::Vector3d camera_position_0, Eigen::AngleAxisd camera_orientation_0,
+        Eigen::Vector3d camera_position_1, Eigen::AngleAxisd camera_orientation_1,
+        Eigen::Vector3d camera_position_2, Eigen::AngleAxisd camera_orientation_2):
+            camera_position_0(camera_position_0), camera_orientation_0(camera_orientation_0),
+            camera_position_1(camera_position_1), camera_orientation_1(camera_orientation_1),
+            camera_position_2(camera_position_2), camera_orientation_2(camera_orientation_2){}
 
-bool BundleAdjuster::LoadFile(const char* filename, bool do_scaling) {
-    FILE* fptr = fopen(filename, "r");
+bool BundleAdjuster::LoadFile(std::string filename) {
+    FILE* fptr = fopen(filename.c_str(), "r");
     if (fptr == NULL) {
       return false;
     };
 
-    FscanfOrDie(fptr, "%d", &num_cameras_);
     FscanfOrDie(fptr, "%d", &num_points_);
     FscanfOrDie(fptr, "%d", &num_observations_);
-    if (do_scaling){
-        FscanfOrDie(fptr, "%d", &first_points_distance_);
-    }
 
     point_index_ = new int[num_observations_];
     camera_index_ = new int[num_observations_];
     observations_ = new double[2 * num_observations_];
 
-    num_parameters_ = 6 * num_cameras_ + 3 * num_points_ + 3;
+    num_parameters_ = 6 + 3 * num_points_ + 3; //6 for new camera position and orientaiton, 3 for each obeservations, 3 for camera parameters
     parameters_ = new double[num_parameters_];
 
     for (int i = 0; i < num_observations_; ++i) {
@@ -69,42 +68,51 @@ bool BundleAdjuster::LoadFile(const char* filename, bool do_scaling) {
       }
     }
 
-    if (do_scaling) {
-        // distance of first two points
-        ceres::CostFunction *cost_function =
-                FirstPointDistanceError::Create(first_points_distance_);
-
-        problem.AddResidualBlock(cost_function, NULL, mutable_points(), mutable_points() + 3);
-    }
-
-    return true;
-}
-
-void BundleAdjuster::addFrame(int frame, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation){
-    double *camera = mutable_cameras() + frame * 6;
-    camera[3] = camera_position.x();
-    camera[4] = camera_position.y();
-    camera[5] = camera_position.z();
-
-    camera[0] = camera_orientation.angle() * camera_orientation.axis()[0];
-    camera[1] = camera_orientation.angle() * camera_orientation.axis()[1];
-    camera[2] = camera_orientation.angle() * camera_orientation.axis()[2];
+    double *camera = mutable_cameras();
+    camera[0] = camera_orientation_2.angle() * camera_orientation_2.axis()[0];
+    camera[1] = camera_orientation_2.angle() * camera_orientation_2.axis()[1];
+    camera[2] = camera_orientation_2.angle() * camera_orientation_2.axis()[2];
+    camera[3] = camera_position_2.x();
+    camera[4] = camera_position_2.y();
+    camera[5] = camera_position_2.z();
 
     for (int i = 0; i < num_observations(); ++i) {
-        if (camera_index_[i] != frame) continue;
 
         // Each Residual block takes a point and a camera as input and outputs a 2
         // dimensional residual. Internally, the cost function stores the observed
         // image location and compares the reprojection against the observation.
 
-        ceres::CostFunction* cost_function =
-                SnavelyReprojectionError::Create(observations()[2 * i + 0],
-                                                 observations()[2 * i + 1]);
-        problem.AddResidualBlock(cost_function,
-                                 NULL /* squared loss */,
-                                 mutable_camera_for_observation(i),
-                                 mutable_point_for_observation(i),
-                                 mutable_camera_parameters());
+        if (camera_index_[i] == 2){
+            ceres::CostFunction* cost_function =
+                    SnavelyReprojectionError::Create(observations()[2 * i + 0],
+                                                     observations()[2 * i + 1]);
+            problem.AddResidualBlock(cost_function,
+                                     NULL /* squared loss */,
+                                     mutable_cameras(),
+                                     mutable_point_for_observation(i),
+                                     mutable_camera_parameters());
+        } else if(camera_index_[i] == 0){
+            ceres::CostFunction* cost_function =
+                    SnavelyReprojectionErrorFixedCamera::Create(observations()[2 * i + 0],
+                                                                observations()[2 * i + 1],
+                                                                camera_position_0, camera_orientation_0);
+            problem.AddResidualBlock(cost_function,
+                                     NULL /* squared loss */,
+                                     mutable_point_for_observation(i),
+                                     mutable_camera_parameters());
+        } else if(camera_index_[i] == 1){
+            ceres::CostFunction* cost_function =
+                    SnavelyReprojectionErrorFixedCamera::Create(observations()[2 * i + 0],
+                                                                observations()[2 * i + 1],
+                                                                camera_position_1, camera_orientation_1);
+            problem.AddResidualBlock(cost_function,
+                                     NULL /* squared loss */,
+                                     mutable_point_for_observation(i),
+                                     mutable_camera_parameters());
+        } else {
+            std::cout << "More than 3 frames in keypoint file!!!" << std::endl;
+        }
+
     }
 }
 
@@ -116,16 +124,17 @@ void BundleAdjuster::run(ceres::Solver::Summary* summary){
     ceres::Solve(options, &problem, summary);
 }
 
-Eigen::Vector3d BundleAdjuster::getPosition(int frame) {
-    double *camera = mutable_cameras() + frame * 6;
+Eigen::Vector3d BundleAdjuster::getPosition() {
+    double *camera = mutable_cameras();
     return Eigen::Vector3d(camera[3], camera[4], camera[5]);
 }
 
-Eigen::AngleAxisd BundleAdjuster::getOrientation(int frame) {
-    double *camera = mutable_cameras() + frame * 6;
+Eigen::AngleAxisd BundleAdjuster::getOrientation() {
+    double *camera = mutable_cameras();
     Eigen::Vector3d raw_orientation(camera[0], camera[1], camera[2]);
     return Eigen::AngleAxisd(raw_orientation.norm(), raw_orientation.normalized());
 }
+
 
 /*int main(int argc, char** argv) {
 

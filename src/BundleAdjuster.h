@@ -49,33 +49,31 @@
 // Read a Bundle Adjustment in the Large dataset.
 class BundleAdjuster {
 public:
+    BundleAdjuster(Eigen::Vector3d camera_position_0, Eigen::AngleAxisd camera_orientation_0, Eigen::Vector3d camera_position_1, Eigen::AngleAxisd camera_orientation_1, Eigen::Vector3d camera_position_2, Eigen::AngleAxisd camera_orientation_2);
+
     ~BundleAdjuster() {
-        delete[] point_index_;
-        delete[] camera_index_;
-        delete[] observations_;
-        delete[] parameters_;
+        if (point_index_ != NULL) delete[] point_index_;
+        if (camera_index_ != NULL) delete[] camera_index_;
+        if (observations_ != NULL) delete[] observations_;
+        if (parameters_ != NULL) delete[] parameters_;
     }
 
     int num_observations()       const { return num_observations_;               }
     const double* observations() const { return observations_;                   }
     double* mutable_cameras()          { return parameters_;                     }
-    double* mutable_points()           { return parameters_  + 6 * num_cameras_; }
-    double* mutable_camera_parameters(){ return parameters_  + 6 * num_cameras_ + 3 * num_points_; }
+    double* mutable_points()           { return parameters_  + 6; }
+    double* mutable_camera_parameters(){ return parameters_  + 6 + 3 * num_points_; }
 
-    double* mutable_camera_for_observation(int i) {
-        return mutable_cameras() + camera_index_[i] * 6;
-    }
     double* mutable_point_for_observation(int i) {
         return mutable_points() + point_index_[i] * 3;
     }
 
-    bool LoadFile(const char* filename);
-    bool LoadFile(const char* filename, bool do_scaling);
-    void addFrame(int frame, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation);
+    bool LoadFile(std::string filename);
+    //void addFrame(int frame, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation);
     void run(ceres::Solver::Summary* summary);
 
-    Eigen::Vector3d getPosition(int frame);
-    Eigen::AngleAxisd getOrientation(int frame);
+    Eigen::Vector3d getPosition();
+    Eigen::AngleAxisd getOrientation();
 
 private:
     template<typename T>
@@ -86,16 +84,23 @@ private:
         }
     }
 
+    Eigen::Vector3d camera_position_0;
+    Eigen::AngleAxisd camera_orientation_0;
+    Eigen::Vector3d camera_position_1;
+    Eigen::AngleAxisd camera_orientation_1;
+    Eigen::Vector3d camera_position_2;
+    Eigen::AngleAxisd camera_orientation_2;
+
     int num_cameras_;
     int num_points_;
     int num_observations_;
     int num_parameters_;
     int first_points_distance_;
 
-    int* point_index_;
-    int* camera_index_;
-    double* observations_;
-    double* parameters_;
+    int* point_index_ = NULL;
+    int* camera_index_ = NULL;
+    double* observations_ = NULL;
+    double* parameters_ = NULL;
 
     ceres::Problem problem;
 
@@ -156,6 +161,67 @@ public:
 
         double observed_x;
         double observed_y;
+    };
+
+    struct SnavelyReprojectionErrorFixedCamera {
+        SnavelyReprojectionErrorFixedCamera(double observed_x, double observed_y, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation)
+                : observed_x(observed_x), observed_y(observed_y), camera_position(camera_position) , camera_orientation(camera_orientation) {}
+
+        template <typename T>
+        bool operator()(const T* const point,
+                        const T* const camera_parameters,
+                        T* residuals) const {
+            // camera[0,1,2] are the angle-axis rotation.
+            T p[3];
+            T r[3];
+            r[0] += camera_orientation.angle() * camera_orientation.axis()[0];
+            r[1] += camera_orientation.angle() * camera_orientation.axis()[1];
+            r[2] += camera_orientation.angle() * camera_orientation.axis()[2];
+            ceres::AngleAxisRotatePoint(r, point, p);
+
+            // camera[3,4,5] are the translation.
+            p[0] += camera_position.x();
+            p[1] += camera_position.y();
+            p[2] += camera_position.z();
+
+            // Compute the center of distortion. The sign change comes from
+            // the camera model that Noah Snavely's Bundler assumes, whereby
+            // the camera coordinate system has a negative z axis.
+            T xp = - p[0] / p[2];
+            T yp = - p[1] / p[2];
+
+            // Apply second and fourth order radial distortion.
+            const T& l1 = camera_parameters[1];
+            const T& l2 = camera_parameters[2];
+            T r2 = xp*xp + yp*yp;
+            T distortion = 1.0 + r2  * (l1 + l2  * r2);
+
+            // Compute final projected point position.
+            const T& focal = camera_parameters[0];
+            T predicted_x = focal * distortion * xp;
+            T predicted_y = focal * distortion * yp;
+
+            // The error is the difference between the predicted and observed position.
+            residuals[0] = predicted_x - observed_x;
+            residuals[1] = predicted_y - observed_y;
+
+            return true;
+        }
+
+        // Factory to hide the construction of the CostFunction object from
+        // the client code.
+        static ceres::CostFunction* Create(const double observed_x,
+                                           const double observed_y,
+                                           Eigen::Vector3d camera_position,
+                                           Eigen::AngleAxisd camera_orientation) {
+            return (new ceres::AutoDiffCostFunction<SnavelyReprojectionErrorFixedCamera, 2, 3, 3>(
+                    new SnavelyReprojectionErrorFixedCamera(observed_x, observed_y, camera_position, camera_orientation)));
+        }
+
+        double observed_x;
+        double observed_y;
+        Eigen::Vector3d camera_position;
+        Eigen::AngleAxisd camera_orientation;
     };
 
     struct FirstPointDistanceError {
