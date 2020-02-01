@@ -51,16 +51,15 @@ bool BundleAdjuster::LoadFile(std::string filename) {
     };
 
     FscanfOrDie(fptr, "%d", &num_points_);
-    FscanfOrDie(fptr, "%d", &num_observations_);
 
-    point_index_ = new int[num_observations_];
-    camera_index_ = new int[num_observations_];
-    observations_ = new double[2 * num_observations_];
+    point_index_ = new int[num_points_ * 3];
+    camera_index_ = new int[num_points_ * 3];
+    observations_ = new double[2 * num_points_ * 3];
 
     num_parameters_ = 6 + 3 * num_points_ + 3; //6 for new camera position and orientaiton, 3 for each obeservations, 3 for camera parameters
     parameters_ = new double[num_parameters_];
 
-    for (int i = 0; i < num_observations_; ++i) {
+    for (int i = 0; i < num_points_ * 3; ++i) {
       FscanfOrDie(fptr, "%d", camera_index_ + i);
       FscanfOrDie(fptr, "%d", point_index_ + i);
       for (int j = 0; j < 2; ++j) {
@@ -120,6 +119,8 @@ bool BundleAdjuster::LoadFile(std::string filename) {
         }
 
     }
+
+    return true;
 }
 
 void BundleAdjuster::run(ceres::Solver::Summary* summary){

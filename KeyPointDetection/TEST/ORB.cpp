@@ -13,19 +13,12 @@
 using namespace std;
 using namespace cv;
 
-//File Format we need to follow is:
 void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,vector<KeyPoint>keypoints_2,vector<DMatch> good_matches,int num_cameras)
 {
   ofstream outfile(output);
-  //Add file headers
-  //<num_cameras> <num_keypoints> <num_total keypoints_index> <num_observations= num_frames*num_keypoints>
-
-  //outfile << "num_cameras\t" << "num_keypoints\t" << "num_observations" << endl;
-
-  //TODO: add the values of the header
 
   outfile<<num_cameras<<" "<<keypoints_1.size()<<" "<< num_cameras*good_matches.size()<<" "<<endl;
-  //outfile <<"Frame Index\t" << "Keypoint Index\t" << "x-coordinate of Keypoint\t" << "y-coordinate of Keypoint\t" << endl;
+
   vector <Point2f> imgpts1, imgpts2;
   for (vector<DMatch>::size_type i=0;i<good_matches.size();i++)
   {
@@ -51,7 +44,7 @@ int main (int argc, char** argv)
 
     if ( argc != 3 )
     {
-        cout<<"usage: feature_extraction img1 img2"<<endl;
+        cout<<"usage: feature_extraction img1 img2 img3"<<endl;
         return 1;
     }
 
@@ -63,19 +56,20 @@ int main (int argc, char** argv)
     glob("../../data/*.png", fn, false);
     vector<Mat> images;
     vector <int> Frames;
-    size_t num_cameras = fn.size(); //number of png files in images folder
+/*    size_t num_cameras = fn.size(); //number of png files in images folder
     for (size_t i=0;i<num_cameras;i++)
     {
       Frames.push_back(i);
       cout << "image names:" << fn[i] << endl;
       cout << "Frame names:" << Frames[i] << endl;
-    }
+    }*/
     Mat img_1 = imread(argv[1],CV_LOAD_IMAGE_COLOR);
     Mat img_2 = imread(argv[2],CV_LOAD_IMAGE_COLOR);
+    Mat img_3 = imread(argv[3],CV_LOAD_IMAGE_COLOR);
 
     //Vector Keypoints, keypoints
-    vector<KeyPoint> keypoints_1, keypoints_2;
-    Mat descriptors_1, descriptors_2;
+    vector<KeyPoint> keypoints_1, keypoints_2, keypoints_3;
+    Mat descriptors_1, descriptors_2, descriptors_3;
     Ptr<FeatureDetector> detector = ORB::create();
     Ptr<DescriptorExtractor> descriptor = ORB::create();
     Ptr<DescriptorMatcher> matcher  = DescriptorMatcher::create("BruteForce-Hamming");
@@ -84,42 +78,68 @@ int main (int argc, char** argv)
     cout << "Size of keypoints1:" << keypoints_1.size() << endl;
     detector->detect(img_2,keypoints_2);
     cout << "Size of Keypoints2:" << keypoints_2.size() << endl;
+    detector->detect(img_3,keypoints_3);
+    cout << "Size of Keypoints2:" << keypoints_3.size() << endl;
 
     descriptor->compute(img_1,keypoints_1,descriptors_1);
     descriptor->compute(img_2,keypoints_2,descriptors_2);
+    descriptor->compute(img_3,keypoints_3,descriptors_3);
 
-    Mat outimg1;
-    drawKeypoints(img_1,keypoints_1,outimg1,Scalar::all(-1),DrawMatchesFlags::DEFAULT);
-    imshow("original img",outimg1);
+    //Mat outimg1;
+    //drawKeypoints(img_1,keypoints_1,outimg1,Scalar::all(-1),DrawMatchesFlags::DEFAULT);
+    //imshow("original img",outimg1);
 
-    vector<DMatch> matches; //stores the matches descriptors
-    matcher->match(descriptors_1, descriptors_2, matches);
+    vector<DMatch> matches_1; //stores the matches descriptors for image pair 1,3
+    vector<DMatch> matches_2; //stores the matches descriptors for image pair 2,3
+    matcher->match(descriptors_3, descriptors_1, matches_1);
+    matcher->match(descriptors_3, descriptors_2, matches_2);
+
+    /*
     double min_dist=10000, max_dist=0;
 
-    for (int i=0;i<descriptors_1.rows;i++)
+    for (int i=0;i<descriptors_3.rows;i++)
     {
         double dist = matches[i].distance;
         if (dist<min_dist) min_dist=dist;
         if (dist>max_dist) max_dist=dist;
     }
+
     cout << "-- Max dist : %f \n" << max_dist << endl;
     cout << "-- Min dist : %f \n"  << min_dist << endl;
+    */
 
-    vector<DMatch> good_matches;
-    for (int i=0;i<descriptors_1.rows;i++)
+
+    std::stringstream output;
+
+    int good_match_id = 0;
+    for (int i=0;i<descriptors_3.rows;i++)
     {
-        if (matches[i].distance<=max(2*min_dist, 30.0))
+        if (matches_1[i].distance<=30.0 and matches_2[i].distance<=30.0)
         {
-            good_matches.push_back(matches[i]);
+            output << "0 " << good_match_id << " " << keypoints_1[matches_1[i].trainIdx].pt.x << " " << keypoints_1[matches_1[i].trainIdx].pt.y << endl;
+            output << "1 " << good_match_id << " " << keypoints_2[matches_2[i].trainIdx].pt.x << " " << keypoints_2[matches_2[i].trainIdx].pt.y << endl;
+            output << "2 " << good_match_id << " " << keypoints_3[i].pt.x << " " << keypoints_3[i].pt.y << endl;
+
+            good_match_id++;
         }
     }
+
+
 
     //We read each pair of images from the data directory, perfom keypoint,
     //detection, matching, and write it on the text file
     string output = "../../output/bundle_data.txt";
-    write2File(output,Frames,keypoints_1,keypoints_2,good_matches,num_cameras);
 
-    Mat img_match;
+    ofstream outfile(output);
+
+    outfile << good_match_id << endl;
+    outfile << output;
+
+    outfile.close();
+
+    //write2File(output,Frames,keypoints_1,keypoints_2,good_matches,num_cameras);
+
+    /*Mat img_match;
     Mat img_goodmatch;
     drawMatches (img_1,keypoints_1,img_2,keypoints_2,matches,img_match);
     drawMatches (img_1,keypoints_1,img_2,keypoints_2,good_matches,img_goodmatch);
@@ -128,6 +148,6 @@ int main (int argc, char** argv)
 
     imshow ("result low",img_match);
     imshow ("result high",img_goodmatch);
-    waitKey(0);
+    waitKey(0);*/
     return 0;
 }

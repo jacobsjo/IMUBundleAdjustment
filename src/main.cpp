@@ -29,7 +29,7 @@ int main()
         //get next camera state
         CameraState nextCameraState = imuIntegration.getNextCameraState();
 
-        if (i >= 2){ // dont adjust first camera state and use imu position
+        if (i >= 2 && false){ // dont adjust first camera state and use imu position
             //get last two frames
             CameraState secondlastframe = imuIntegration.getCameraState(i-2);
             CameraState lastframe = imuIntegration.getCameraState(i-1);
@@ -41,15 +41,16 @@ int main()
                     nextCameraState.position,  Eigen::AngleAxisd(nextCameraState.orientation)
                     );
 
-            std::string filename = "../data/20200117_184501/keypoints_";
+            std::string filename = "../data/20191218_100925/keypoint_";
             filename.append(std::to_string(i)).append(".txt");
             if (!ba.LoadFile(filename)) { //load keypoints and create residual terms
                 std::cout << "file " << filename << " not found" << std::endl;
+                //break;
             } else {
 
                 ceres::Solver::Summary summary;
                 ba.run(&summary); // run solver
-                std::cout << summary.BriefReport() << std::endl; //print bried report
+                //std::cout << summary.BriefReport() << std::endl; //print bried report
 
                 //get position of current frame
                 nextCameraState.position = ba.getPosition();
