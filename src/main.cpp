@@ -4,7 +4,7 @@
 
 int main()
 {
-    BundleAdjustmentIMU baimu("../data/20191218_100925.csv", "../data/20191218_100925_keypoints.txt");
+    BundleAdjustmentIMU baimu("../data/20200117_184501.csv", "../data/20200117_184501.matches.init.txt");
 
     int i = 0;
     ceres::Solver::Summary summary;

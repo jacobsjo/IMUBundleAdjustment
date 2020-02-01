@@ -38,6 +38,10 @@
 #include "BundleAdjuster.h"
 
 bool BundleAdjuster::LoadFile(const char* filename) {
+    return LoadFile(filename, true);
+}
+
+bool BundleAdjuster::LoadFile(const char* filename, bool do_scaling) {
     FILE* fptr = fopen(filename, "r");
     if (fptr == NULL) {
       return false;
@@ -46,7 +50,9 @@ bool BundleAdjuster::LoadFile(const char* filename) {
     FscanfOrDie(fptr, "%d", &num_cameras_);
     FscanfOrDie(fptr, "%d", &num_points_);
     FscanfOrDie(fptr, "%d", &num_observations_);
-    FscanfOrDie(fptr, "%d", &first_points_distance_);
+    if (do_scaling){
+        FscanfOrDie(fptr, "%d", &first_points_distance_);
+    }
 
     point_index_ = new int[num_observations_];
     camera_index_ = new int[num_observations_];
@@ -63,11 +69,13 @@ bool BundleAdjuster::LoadFile(const char* filename) {
       }
     }
 
-    // distance of first two points
-    ceres::CostFunction* cost_function =
-            FirstPointDistanceError::Create(first_points_distance_);
+    if (do_scaling) {
+        // distance of first two points
+        ceres::CostFunction *cost_function =
+                FirstPointDistanceError::Create(first_points_distance_);
 
-    problem.AddResidualBlock(cost_function, NULL, mutable_points(), mutable_points() + 3);
+        problem.AddResidualBlock(cost_function, NULL, mutable_points(), mutable_points() + 3);
+    }
 
     return true;
 }

@@ -32,7 +32,7 @@ BundleAdjustmentIMU::BundleAdjustmentIMU(const char *imuFile, const char *keypoi
     }
 
     //load keypoints
-    if (!bundleAdjuster.LoadFile(keypointFile)){
+    if (!bundleAdjuster.LoadFile(keypointFile, false)){
         std::cout << "Keypoint file not found" << std::endl;
         return;
     }

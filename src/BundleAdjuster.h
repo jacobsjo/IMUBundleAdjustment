@@ -70,6 +70,7 @@ public:
     }
 
     bool LoadFile(const char* filename);
+    bool LoadFile(const char* filename, bool do_scaling);
     void addFrame(int frame, Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation);
     void run(ceres::Solver::Summary* summary);
 
