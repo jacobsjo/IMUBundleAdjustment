@@ -224,30 +224,48 @@ public:
         Eigen::AngleAxisd camera_orientation;
     };
 
-    struct FirstPointDistanceError {
-        FirstPointDistanceError(double desired_distance)
-                : desired_distance(desired_distance) {}
+    struct IMUDifferenceError {
+        IMUDifferenceError(Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation)
+                : camera_position(camera_position) , camera_orientation(camera_orientation) {}
 
         template <typename T>
-        bool operator()(const T* const point1,
-                        const T* const point2,
+        bool operator()(const T* const camera,
                         T* residuals) const {
 
-            residuals[0] = (point1[0] - point2[0]) * (point1[0] - point2[0])
-                         + (point1[1] - point2[1]) * (point1[1] - point2[1])
-                         + (point1[2] - point2[2]) * (point1[2] - point2[2]);
+            residuals[0] = (camera[3] - camera_position[0])*(camera[3] - camera_position[0]);
+            residuals[1] = (camera[4] - camera_position[1])*(camera[4] - camera_position[1]);
+            residuals[2] = (camera[5] - camera_position[2])*(camera[5] - camera_position[2]);
+
+            T r[3];
+            r[0] += camera_orientation.angle() * camera_orientation.axis()[0];
+            r[1] += camera_orientation.angle() * camera_orientation.axis()[1];
+            r[2] += camera_orientation.angle() * camera_orientation.axis()[2];
+
+            T p[3];
+            p[1] += 1.0;
+
+            T forward_vector_1[3];
+            T forward_vector_2[3];
+
+            ceres::AngleAxisRotatePoint(camera, p, forward_vector_1);
+            ceres::AngleAxisRotatePoint(r, p, forward_vector_2);
+
+            residuals[3] = (forward_vector_1[0] - forward_vector_2[0]) * (forward_vector_1[0] - forward_vector_2[0]);
+            residuals[4] = (forward_vector_1[1] - forward_vector_2[1]) * (forward_vector_1[1] - forward_vector_2[1]);
+            residuals[5] = (forward_vector_1[2] - forward_vector_2[2]) * (forward_vector_1[2] - forward_vector_2[2]);
 
             return true;
         }
 
         // Factory to hide the construction of the CostFunction object from
         // the client code.
-        static ceres::CostFunction* Create(const double desired_distance) {
-            return (new ceres::AutoDiffCostFunction<FirstPointDistanceError, 1, 3, 3>(
-                    new FirstPointDistanceError(desired_distance)));
+        static ceres::CostFunction* Create(Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation) {
+            return (new ceres::AutoDiffCostFunction<IMUDifferenceError, 6, 6>(
+                    new IMUDifferenceError(camera_position, camera_orientation)));
         }
 
-        double desired_distance;
+        Eigen::Vector3d camera_position;
+        Eigen::AngleAxisd camera_orientation;
     };
 
 };

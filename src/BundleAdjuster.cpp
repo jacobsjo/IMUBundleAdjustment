@@ -76,6 +76,12 @@ bool BundleAdjuster::LoadFile(std::string filename) {
     camera[4] = camera_position_2.y();
     camera[5] = camera_position_2.z();
 
+    ceres::CostFunction* cost_function =
+            IMUDifferenceError::Create(camera_position_0, camera_orientation_0);
+    problem.AddResidualBlock(cost_function,
+                             NULL /* squared loss */,
+                             mutable_cameras());
+
     for (int i = 0; i < num_observations(); ++i) {
 
         // Each Residual block takes a point and a camera as input and outputs a 2
