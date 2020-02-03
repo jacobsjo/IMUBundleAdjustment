@@ -14,6 +14,15 @@ using namespace std;
 using namespace cv;
 
 //File Format we need to follow is:
+//Read camera Parameters and build the parameters for ceres
+//CameraParameters reads in the camera matrix from opencv  cv.calibrateCamera
+//
+void CameraPrameters(string calib_path,vector <float> distortions,)
+{
+  ofstream calibfile(calib_path);
+
+}
+
 void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,vector<KeyPoint>keypoints_2,vector<DMatch> good_matches,int num_cameras)
 {
   ofstream outfile(output);
@@ -39,6 +48,11 @@ void write2File(string output,vector <int> Frames,vector<KeyPoint>keypoints_1,ve
     outfile << Frames[0]<<" "<<i<<"\t"<<keypoints_1[good_matches[i].queryIdx].pt.x<<" "<<keypoints_1[good_matches[i].queryIdx].pt.y<<endl;
     outfile << Frames[1]<<" "<<i<<"\t"<<keypoints_2[good_matches[i].trainIdx].pt.x<<" "<<keypoints_2[good_matches[i].trainIdx].pt.y<<endl;
   }
+
+  //TODO: write the initial camera parameters here for ceres:
+  //how does ceres wants to have the camera parameters?
+
+
   outfile.close();
 }
 
