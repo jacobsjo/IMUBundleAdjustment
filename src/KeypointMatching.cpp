@@ -81,7 +81,7 @@ int main (int argc, char** argv)
     detector->detect(img_2,keypoints_2);
     cout << "Size of Keypoints2:" << keypoints_2.size() << endl;
     detector->detect(img_3,keypoints_3);
-    cout << "Size of Keypoints2:" << keypoints_3.size() << endl;
+    cout << "Size of Keypoints3:" << keypoints_3.size() << endl;
 
     descriptor->compute(img_1,keypoints_1,descriptors_1);
     descriptor->compute(img_2,keypoints_2,descriptors_2);
@@ -118,9 +118,9 @@ int main (int argc, char** argv)
     {
         if (matches_1[i].distance<=20.0 and matches_2[i].distance<=20.0)
         {
-            out << "0 " << good_match_id << " " << keypoints_1[matches_1[i].trainIdx].pt.x << " " << keypoints_1[matches_1[i].trainIdx].pt.y << endl;
-            out << "1 " << good_match_id << " " << keypoints_2[matches_2[i].trainIdx].pt.x << " " << keypoints_2[matches_2[i].trainIdx].pt.y << endl;
-            out << "2 " << good_match_id << " " << keypoints_3[i].pt.x << " " << keypoints_3[i].pt.y << endl;
+            out << "0 " << good_match_id << " " << (keypoints_1[matches_1[i].trainIdx].pt.x / 960.0 - 1.0) << " " << (keypoints_1[matches_1[i].trainIdx].pt.y / 960.0 - 1.0) << endl;
+            out << "1 " << good_match_id << " " << (keypoints_2[matches_2[i].trainIdx].pt.x / 960.0 - 1.0) << " " << (keypoints_2[matches_2[i].trainIdx].pt.y / 960.0 - 1.0) << endl;
+            out << "2 " << good_match_id << " " << (keypoints_3[i].pt.x / 960.0 - 1.0) << " " << (keypoints_3[i].pt.y / 960.0 - 1.0) << endl;
 
             good_match_id++;
         }

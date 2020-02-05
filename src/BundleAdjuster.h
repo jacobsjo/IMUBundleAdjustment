@@ -58,7 +58,8 @@ public:
         if (parameters_ != NULL) delete[] parameters_;
     }
 
-    int num_observations()       const { return num_observations_;               }
+    int num_observations()       const { return num_points_ * 3;               }
+    int num_points()             const { return num_points_;                   }
     const double* observations() const { return observations_;                   }
     double* mutable_cameras()          { return parameters_;                     }
     double* mutable_points()           { return parameters_  + 6; }
@@ -91,9 +92,9 @@ private:
     Eigen::Vector3d camera_position_2;
     Eigen::AngleAxisd camera_orientation_2;
 
-    int num_cameras_;
+    //int num_cameras_;
     int num_points_;
-    int num_observations_;
+    //int num_observations_;
     int num_parameters_;
     int first_points_distance_;
 
@@ -174,15 +175,15 @@ public:
             // camera[0,1,2] are the angle-axis rotation.
             T p[3];
             T r[3];
-            r[0] += camera_orientation.angle() * camera_orientation.axis()[0];
-            r[1] += camera_orientation.angle() * camera_orientation.axis()[1];
-            r[2] += camera_orientation.angle() * camera_orientation.axis()[2];
+            r[0] = T(camera_orientation.angle() * camera_orientation.axis()[0]);
+            r[1] = T(camera_orientation.angle() * camera_orientation.axis()[1]);
+            r[2] = T(camera_orientation.angle() * camera_orientation.axis()[2]);
             ceres::AngleAxisRotatePoint(r, point, p);
 
             // camera[3,4,5] are the translation.
-            p[0] += camera_position.x();
-            p[1] += camera_position.y();
-            p[2] += camera_position.z();
+            p[0] += T(camera_position.x());
+            p[1] += T(camera_position.y());
+            p[2] += T(camera_position.z());
 
             // Compute the center of distortion. The sign change comes from
             // the camera model that Noah Snavely's Bundler assumes, whereby
@@ -232,10 +233,11 @@ public:
         bool operator()(const T* const camera,
                         T* residuals) const {
 
-            residuals[0] = (camera[3] - camera_position[0])*(camera[3] - camera_position[0]);
-            residuals[1] = (camera[4] - camera_position[1])*(camera[4] - camera_position[1]);
-            residuals[2] = (camera[5] - camera_position[2])*(camera[5] - camera_position[2]);
+            residuals[0] = (camera[3] - camera_position[0])*(camera[3] - camera_position[0]) * 20.0;
+            residuals[1] = (camera[4] - camera_position[1])*(camera[4] - camera_position[1]) * 20.0;
+            residuals[2] = (camera[5] - camera_position[2])*(camera[5] - camera_position[2]) * 20.0;
 
+            /*
             T r[3];
             r[0] += camera_orientation.angle() * camera_orientation.axis()[0];
             r[1] += camera_orientation.angle() * camera_orientation.axis()[1];
@@ -245,14 +247,14 @@ public:
             p[1] += 1.0;
 
             T forward_vector_1[3];
-            T forward_vector_2[3];
+            T forward_vector_2[3];*/
 
-            ceres::AngleAxisRotatePoint(camera, p, forward_vector_1);
-            ceres::AngleAxisRotatePoint(r, p, forward_vector_2);
+            //ceres::AngleAxisRotatePoint(camera, p, forward_vector_1);
+            //ceres::AngleAxisRotatePoint(r, p, forward_vector_2);
 
-            residuals[3] = (forward_vector_1[0] - forward_vector_2[0]) * (forward_vector_1[0] - forward_vector_2[0]);
-            residuals[4] = (forward_vector_1[1] - forward_vector_2[1]) * (forward_vector_1[1] - forward_vector_2[1]);
-            residuals[5] = (forward_vector_1[2] - forward_vector_2[2]) * (forward_vector_1[2] - forward_vector_2[2]);
+            //residuals[3] = (forward_vector_1[0] - forward_vector_2[0]) * (forward_vector_1[0] - forward_vector_2[0]);
+            //residuals[4] = (forward_vector_1[1] - forward_vector_2[1]) * (forward_vector_1[1] - forward_vector_2[1]);
+            //residuals[5] = (forward_vector_1[2] - forward_vector_2[2]) * (forward_vector_1[2] - forward_vector_2[2]);
 
             return true;
         }
@@ -260,7 +262,7 @@ public:
         // Factory to hide the construction of the CostFunction object from
         // the client code.
         static ceres::CostFunction* Create(Eigen::Vector3d camera_position, Eigen::AngleAxisd camera_orientation) {
-            return (new ceres::AutoDiffCostFunction<IMUDifferenceError, 6, 6>(
+            return (new ceres::AutoDiffCostFunction<IMUDifferenceError, 3, 6>(
                     new IMUDifferenceError(camera_position, camera_orientation)));
         }
 

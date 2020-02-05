@@ -75,11 +75,19 @@ bool BundleAdjuster::LoadFile(std::string filename) {
     camera[4] = camera_position_2.y();
     camera[5] = camera_position_2.z();
 
+    for (int i = 0 ; i < num_points() ; ++i){
+        double *point = mutable_points() + 3*i;
+        point[0] = (std::rand() / (RAND_MAX + 1.)) * 2 - 1;
+        point[1] = (std::rand() / (RAND_MAX + 1.)) * 2 - 1;
+        point[2] = (std::rand() / (RAND_MAX + 1.)) * 2 - 1;
+    }
+
+    /*
     ceres::CostFunction* cost_function =
             IMUDifferenceError::Create(camera_position_0, camera_orientation_0);
     problem.AddResidualBlock(cost_function,
-                             NULL /* squared loss */,
-                             mutable_cameras());
+                             NULL /* squared loss * /,
+                             mutable_cameras());*/
 
     for (int i = 0; i < num_observations(); ++i) {
 
@@ -126,7 +134,8 @@ bool BundleAdjuster::LoadFile(std::string filename) {
 void BundleAdjuster::run(ceres::Solver::Summary* summary){
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
+    options.minimizer_progress_to_stdout = false;
+    options.max_num_iterations = 200;
 
     ceres::Solve(options, &problem, summary);
 }
