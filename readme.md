@@ -85,7 +85,7 @@ time structure from motion using local bundle adjustment. Image and Vision Compu
 
 ![Setup](Presentation/setup.png)
 ![Stationary](Presentation/stationary.jpg)
-![distance_measure](Presentation/distance_measure.jpg)
+![distance_measure](Presentation/Result.png)
 ![staircase](Presentation/staircase.jpg)
 
 Figure 2: Our Experiments and Results. Top-Left: Distance measurement setup;
