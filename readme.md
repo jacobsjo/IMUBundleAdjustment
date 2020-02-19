@@ -31,12 +31,7 @@ position and orientation value of the camera (see [1, 2]). These values are then
 the input for the Bundle Adjustment of the next frame. Performing this process over all
 the video frames gives us na approximation of the camera path which is fairly accurate.
 An overview of the entire process is illustrated in figure 1.
-
-```
-Figure 1: Pipeline
-```
-(^1) Seehttps://github.com/e-lab/VideoSensors
-
+![Pipeline](Presentation/overview.png)
 
 ## 3 Problems and Possible Errors
 
@@ -72,7 +67,7 @@ time though the camera is stationary. The bundle adjustment sometimes corrected 
 error.
 
 Staircase We recorded the path in a staircase moving down by two floors. Our hope
-was to evaluate the alignment between sdifferent floors. The bottom-right image in figure
+was to evaluate the alignment between different floors. The bottom-right image in figure
 2 shows the results. Unfortunately, the results were inconclusive. We also tried to correct
 the velocity of the IMU-Integration using the results from the bundle adjustments (green
 dots). However, this did not result in an improvement.
@@ -88,6 +83,10 @@ pages 107–112. IEEE, sep 2016.
 time structure from motion using local bundle adjustment. Image and Vision Computing,
 27(8):1178–1193, jul 2009.
 
+![Setup](Presentation/setup.png)
+![Stationary](Presentation/stationary.jpg)
+![distance_measure](Presentation/distance_measure.jpg)
+![staircase](Presentation/staircase.jpg)
 
 Figure 2: Our Experiments and Results. Top-Left: Distance measurement setup;
 Botton-Left:Distance measurement result;Top-Right:Stationary measure-
